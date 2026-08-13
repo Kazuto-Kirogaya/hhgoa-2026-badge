@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111111" />
+
+  <title>HHgoa 2026 Badge Maker</title>
+
+  <!-- HEIC support -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"
+          integrity="sha384-OTofQ0MEeiSgh62havBcemCIK0gqj809wX6UA0uPISNMRnR6NZyCdGzX3SbLrgwL"
+          crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg: #f4eee5;
+      --card: #fffdf9;
+      --ink: #111111;
+      --muted: #746d65;
+      --orange: #ff5938;
+      --yellow: #ffd34f;
+      --border: #ddd4c8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app { width: min(1180px, 100%); margin: auto; padding: 14px; }
+
+    .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .logo { font-size: 29px; font-weight: 950; letter-spacing: -0.07em; }
+    .logo span { color: var(--orange); }
+    .year { border: 2px solid var(--ink); border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 900; }
+
+    .layout { display: grid; grid-template-columns: 360px 1fr; gap: 22px; align-items: start; }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 19px;
+      box-shadow: 0 12px 35px rgba(0,0,0,.06);
+    }
+
+    h1 { font-size: 36px; line-height: .96; letter-spacing: -.055em; margin: 2px 0 11px; }
+    .intro { color: var(--muted); font-size: 13px; line-height: 1.45; margin-bottom: 19px; }
+
+    label {
+      display: block; font-size: 10px; font-weight: 900;
+      text-transform: uppercase; letter-spacing: .09em; margin: 14px 0 6px;
+    }
+
+    input {
+      width: 100%; border: 1px solid #cbc2b5; border-radius: 11px;
+      padding: 11px 12px; background: white; color: var(--ink); font: inherit; outline: none;
+    }
+    input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,89,56,.12); }
+
+    .drop {
+      border: 2px dashed #c9c0b4; border-radius: 15px; padding: 18px 10px;
+      text-align: center; background: #faf7f1; cursor: pointer; transition: .15s;
+    }
+    .drop:hover, .drop.drag { border-color: var(--orange); background: #fff3ee; }
+    .drop strong { display: block; font-size: 13px; }
+    .drop small { display: block; color: var(--muted); font-size: 10px; margin-top: 5px; }
+
+    .actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 18px; }
+    .actions.split { grid-template-columns: 1fr 1fr; }
+
+    button {
+      border: 0; border-radius: 11px; padding: 13px 9px; font: inherit;
+      font-weight: 900; cursor: pointer;
+    }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .generate { background: var(--orange); color: var(--ink); }
+    .download { background: var(--ink); color: white; }
+    .share { background: var(--orange); color: var(--ink); }
+
+    .status { min-height: 16px; margin-top: 8px; color: var(--muted); font-size: 10px; }
+    .status.err { color: #c92a2a; font-weight: 700; }
+
+    .preview { position: sticky; top: 12px; }
+    .preview-bar { display: flex; justify-content: space-between; margin: 0 2px 7px; font-size: 11px; font-weight: 850; }
+    .preview-bar span { color: var(--muted); }
+
+    canvas, .result-img {
+      width: 100%; height: auto; display: block; border-radius: 20px;
+      background: white; box-shadow: 0 18px 45px rgba(0,0,0,.14);
+    }
+    .result-img { display: none; }
+
+    .badge-pill {
+      display: none; margin-top: 8px; font-size: 11px; font-weight: 900;
+      color: var(--orange); text-align: center;
+    }
+
+    .note { color: var(--muted); font-size: 10px; line-height: 1.4; margin-top: 8px; }
+
+    @media (max-width: 800px) {
+      .app { padding: 10px; }
+      .layout { display: flex; flex-direction: column; }
+      .preview { position: static; order: -1; width: 100%; }
+      .panel { width: 100%; padding: 16px; border-radius: 18px; }
+      h1 { font-size: 30px; }
+      .actions {
+        position: sticky; bottom: 7px; z-index: 10; background: var(--card);
+        padding: 6px; border-radius: 13px; box-shadow: 0 8px 25px rgba(0,0,0,.15);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header class="top">
+    <div class="logo">HH<span>goa</span></div>
+    <div class="year">2026</div>
+  </header>
+
+  <main class="layout">
+
+    <section class="panel">
+
+      <h1>Your HHgoa badge, instantly.</h1>
+
+      <p class="intro">
+        Upload a real photo, answer a few quick prompts
+        and get a social-ready HHgoa 2026 graphic.
+        No account. No signup. No waiting screen.
+      </p>
+
+      <label>Photo</label>
+      <div class="drop" id="dropZone">
+        <strong>Tap to choose a photo</strong>
+        <small>JPG · PNG · HEIC/HEIF from iPhone · auto-fitted</small>
+        <input
+          id="photoInput"
+          type="file"
+          accept="image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+          hidden
+        />
+      </div>
+
+      <label for="name">Name</label>
+      <input id="name" type="text" maxlength="28" placeholder="Your name" autocomplete="name" />
+
+      <label for="stack">Stack</label>
+      <input id="stack" type="text" maxlength="30" placeholder="e.g. Product + AI" />
+
+      <label for="role">Role</label>
+      <input id="role" type="text" maxlength="28" placeholder="e.g. Builder" />
+
+      <label for="fun">Fun field</label>
+      <input id="fun" type="text" maxlength="34" placeholder="e.g. Chai > Coffee" />
+
+      <div class="actions">
+        <button class="generate" id="generateBtn" disabled>Generate badge</button>
+      </div>
+
+      <div class="actions split" style="margin-top:8px">
+        <button class="download" id="downloadBtn" disabled>Download PNG</button>
+        <button class="share" id="shareBtn" disabled>Share to X ↗</button>
+      </div>
+
+      <div class="status" id="status">Select a photo to start.</div>
+
+      <div class="note">
+        Live preview renders in your browser.
+        Hitting "Generate badge" creates the real shareable
+        image on the server so your X share link shows a
+        proper preview card. Output: 1600 × 2000.
+      </div>
+
+    </section>
+
+    <section class="preview">
+      <div class="preview-bar">
+        <b>Live result</b>
+        <span id="dimsLabel">1600 × 2000</span>
+      </div>
+
+      <canvas id="badgeCanvas" width="1600" height="2000"></canvas>
+      <img id="resultImg" class="result-img" alt="Your generated HHgoa badge" />
+
+      <div class="badge-pill" id="badgePill"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+
+/* =========================================================
+   CONFIG
+   Same-origin by default. If the frontend is hosted
+   separately from the Express server, set this to the
+   server's public URL, e.g. "https://hhgoa-api.example.com"
+========================================================= */
+const API_BASE = "";
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+const canvas = document.getElementById("badgeCanvas");
+const ctx = canvas.getContext("2d");
+const resultImg = document.getElementById("resultImg");
+const fileInput = document.getElementById("photoInput");
+const dropZone = document.getElementById("dropZone");
+const generateBtn = document.getElementById("generateBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const shareBtn = document.getElementById("shareBtn");
+const status = document.getElementById("status");
+const badgePill = document.getElementById("badgePill");
+
+let uploadedPhoto = null;   // Image object, for the local live preview
+let uploadedBlob = null;    // File/Blob actually sent to the server
+let objectURL = null;
+
+let serverResult = null;    // { imageUrl, shareUrl, tweetText, builderId }
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function roundedRect(x, y, width, height, radius, color) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawText(value, x, y, size, weight = "800", color = "#111", align = "left") {
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${size}px Inter, Arial, sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(value, x, y);
+}
+
+function getValue(id, fallback) {
+  const value = document.getElementById(id).value.trim();
+  return value || fallback;
+}
+
+// Pixel-budget truncation instead of a fixed character count, since a
+// proportional font makes character-count truncation unreliable — "iiii"
+// and "WWWW" are not the same width at the same size/weight.
+function truncateToWidth(value, maxWidth, size, weight) {
+  ctx.font = `${weight} ${size}px Inter, Arial, sans-serif`;
+  if (ctx.measureText(value).width <= maxWidth) return value;
+
+  let lo = 0, hi = value.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = value.slice(0, mid) + "…";
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return value.slice(0, lo) + "…";
+}
+
+function setStatus(msg, isError = false) {
+  status.textContent = msg;
+  status.classList.toggle("err", isError);
+}
+
+function showingResult() {
+  return !!serverResult;
+}
+
+/* =========================================================
+   DRAW LIVE PREVIEW (client-side, instant, not the final asset)
+========================================================= */
+
+function renderBadge() {
+  if (showingResult()) return; // once we have a server result, that image is the source of truth
+
+  const W = 1600, H = 2000;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = "#f5eee4";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#ff5938";
+  ctx.beginPath();
+  ctx.arc(1515, 120, 225, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffd34f";
+  ctx.beginPath();
+  ctx.arc(30, 1950, 250, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawText("HHgoa", 80, 115, 75, "950");
+  drawText("2026", 1520, 115, 50, "950", "#111", "right");
+  drawText("INTERNET BADGE / GOA", 80, 172, 21, "900", "#ff5938");
+
+  const photoX = 80, photoY = 215, photoW = 1440, photoH = 1010;
+  roundedRect(photoX, photoY, photoW, photoH, 40, "#d8d0c5");
+
+  if (uploadedPhoto) {
+    const scale = Math.max(photoW / uploadedPhoto.width, photoH / uploadedPhoto.height);
+    const drawW = uploadedPhoto.width * scale;
+    const drawH = uploadedPhoto.height * scale;
+    const drawX = photoX + (photoW - drawW) / 2;
+    const drawY = photoY + (photoH - drawH) / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(photoX, photoY, photoW, photoH, 40);
+    ctx.clip();
+    ctx.drawImage(uploadedPhoto, drawX, drawY, drawW, drawH);
+    ctx.restore();
+  } else {
+    drawText("UPLOAD YOUR PHOTO", 800, 710, 48, "950", "#817a71", "center");
+    drawText("JPG · PNG · HEIC", 800, 765, 22, "800", "#817a71", "center");
+  }
+
+  roundedRect(1070, 252, 395, 82, 18, "#111");
+  drawText("HHGOA / 2026", 1267, 306, 26, "950", "#fff", "center");
+
+  const name = truncateToWidth(getValue("name", "YOUR NAME"), 1440, 86, "950");
+  const stack = truncateToWidth(getValue("stack", "YOUR STACK"), 1440, 34, "900");
+  const role = truncateToWidth(getValue("role", "YOUR ROLE"), 1300, 43, "950");
+  const fun = truncateToWidth(getValue("fun", "YOUR FUN FIELD"), 610, 33, "900");
+
+  drawText(name, 80, 1380, 86, "950");
+  drawText(stack, 80, 1450, 34, "900", "#ff5938");
+
+  roundedRect(80, 1500, 1440, 250, 28, "#111");
+  drawText("ROLE", 118, 1560, 19, "850", "#aaa39a");
+  drawText(role, 118, 1620, 43, "950", "#fff");
+  drawText("FUN FIELD", 785, 1560, 19, "850", "#aaa39a");
+  drawText(fun, 785, 1620, 33, "900", "#fff");
+
+  drawText("SEE YOU AT HHGOA", 80, 1870, 27, "950");
+  drawText("@HHGOA", 1520, 1870, 27, "950", "#111", "right");
+
+  roundedRect(1160, 1788, 360, 88, 20, "#ff5938");
+  drawText("READY TO POST", 1340, 1844, 26, "950", "#111", "center");
+}
+
+/* =========================================================
+   PHOTO PROCESSING (local preview + prepares the upload blob)
+========================================================= */
+
+async function processPhoto(file) {
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    setStatus("That photo is over 10MB — please pick a smaller one.", true);
+    return;
+  }
+
+  setStatus("Preparing photo…");
+
+  try {
+    let blob = file;
+    const type = (file.type || "").toLowerCase();
+
+    if (type.includes("heic") || type.includes("heif") || /\.(heic|heif)$/i.test(file.name)) {
+      if (!window.heic2any) {
+        throw new Error("HEIC support is unavailable. Try JPG or PNG.");
+      }
+      blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+      if (Array.isArray(blob)) blob = blob[0];
+    }
+
+    uploadedBlob = blob; // this is what actually gets uploaded to the server
+
+    if (objectURL) URL.revokeObjectURL(objectURL);
+    objectURL = URL.createObjectURL(blob);
+
+    const image = new Image();
+
+    image.onload = function () {
+      uploadedPhoto = image;
+      resetToPreviewMode();
+      renderBadge();
+      generateBtn.disabled = false;
+      setStatus("Looking good — fill in your details and generate.");
+    };
+
+    image.onerror = function () {
+      throw new Error("Could not read this photo.");
+    };
+
+    image.src = objectURL;
+
+  } catch (error) {
+    uploadedPhoto = null;
+    uploadedBlob = null;
+    generateBtn.disabled = true;
+    resetToPreviewMode();
+    renderBadge();
+    setStatus(error.message || "Could not process this photo.", true);
+  }
+}
+
+function resetToPreviewMode() {
+  serverResult = null;
+  resultImg.style.display = "none";
+  canvas.style.display = "block";
+  downloadBtn.disabled = true;
+  shareBtn.disabled = true;
+  badgePill.style.display = "none";
+}
+
+/* =========================================================
+   UPLOAD EVENTS
+========================================================= */
+
+dropZone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => processPhoto(e.target.files[0]));
+
+dropZone.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropZone.classList.add("drag");
+});
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("drag");
+  processPhoto(e.dataTransfer.files[0]);
+});
+
+document.querySelectorAll('input[type="text"]').forEach(input => {
+  input.addEventListener("input", renderBadge);
+});
+
+/* =========================================================
+   GENERATE (calls the server — this is what makes the
+   Share-to-X link preview actually work)
+========================================================= */
+
+generateBtn.addEventListener("click", async () => {
+  if (!uploadedBlob) {
+    setStatus("Add a photo first.", true);
+    return;
+  }
+
+  generateBtn.disabled = true;
+  downloadBtn.disabled = true;
+  shareBtn.disabled = true;
+  setStatus("Generating your badge…");
+
+  try {
+    const form = new FormData();
+    const filename = uploadedBlob.name || "photo.jpg";
+    form.append("photo", uploadedBlob, filename);
+    form.append("name", getValue("name", ""));
+    form.append("stack", getValue("stack", ""));
+    form.append("role", getValue("role", ""));
+    // Backend's generic "field1" slot is used for the fun field here.
+    form.append("field1", getValue("fun", ""));
+
+    const res = await fetch(`${API_BASE}/api/generate`, {
+      method: "POST",
+      body: form
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Generation failed.");
+    }
+
+    serverResult = data;
+
+    // Swap the live canvas preview for the real server-rendered image —
+    // this is the actual file that gets downloaded and shared.
+    resultImg.src = data.imageUrl;
+    resultImg.style.display = "block";
+    canvas.style.display = "none";
+
+    badgePill.textContent = data.builderId;
+    badgePill.style.display = "block";
+
+    downloadBtn.disabled = false;
+    shareBtn.disabled = false;
+
+    setStatus(`Ready — generated in ${data.generationMs}ms.`);
+
+  } catch (error) {
+    setStatus(error.message || "Could not generate badge. Try again.", true);
+  } finally {
+    generateBtn.disabled = false;
+  }
+});
+
+/* =========================================================
+   DOWNLOAD (fetches the real server image, works cross-origin)
+========================================================= */
+
+downloadBtn.addEventListener("click", async () => {
+  if (!serverResult) return;
+
+  try {
+    const res = await fetch(serverResult.imageUrl);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "hhgoa-2026-badge.jpg";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    setStatus("Download failed — try again.", true);
+  }
+});
+
+/* =========================================================
+   SHARE TO X
+   Shares the server-hosted link (not just a caption), so the
+   tweet unfurls into the actual badge via the OG image on /s/:id.
+========================================================= */
+
+shareBtn.addEventListener("click", () => {
+  if (!serverResult) return;
+
+  const xUrl =
+    "https://twitter.com/intent/tweet?text=" +
+    encodeURIComponent(serverResult.tweetText) +
+    "&url=" +
+    encodeURIComponent(serverResult.shareUrl);
+
+  window.open(xUrl, "_blank", "noopener,noreferrer");
+
+  setStatus("X opened with your badge link ready to post.");
+});
+
+/* =========================================================
+   INITIAL RENDER
+========================================================= */
+
+renderBadge();
+
+</script>
+
+</body>
+</html>
