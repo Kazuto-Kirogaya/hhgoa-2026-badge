@@ -84,7 +84,7 @@ function builderId(name) {
   return `#HH-GOA-${seed}-${code}`;
 }
 
-function barcode() {
+function barcode() {z
   return Array.from({ length: 24 }, (_, i) =>
     `<rect x="${i * 14}" y="0" width="${i % 4 === 0 ? 7 : 3}" height="52" fill="#183d2b"/>`
   ).join("");
@@ -211,7 +211,9 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
       ? members.map((m, i) =>
           text(`${String(i + 1).padStart(2, "0")}  ${m}`, 870, 1525 + i * 58, 25, 900)
         ).join("")
-      : text("ADD YOUR CREW · 1—3 MEMBERS", 870, 1525, 22, 900);
+      : text("Supriya SM", 870, 1525, 22, 900);
+	  :	text("Swapna", 870, 1525, 22, 900);
+	  : text("Arnab Kumar", 870, 1525, 22, 900);
 
     const overlaySvg = `
       <svg width="1600" height="2000" viewBox="0 0 1600 2000" xmlns="http://www.w3.org/2000/svg">
